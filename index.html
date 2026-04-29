@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!-- ================================================================
   부산찬스 시뮬레이터 — Web 버전
-  Build: 20260429-060234 (v5 - BFF v16.1 마스터본 정합 + Vercel 웹 진입점)
+  Build: 20260429-073252 (v5 - BFF v16.1 마스터본 정합 + Vercel 웹 진입점)
   YFF v16.1 반영: 부산찬스 BFF · 슬로건 "3+7=1억" · SOC 87조 풀 (7대 사업)
   포용형 1,200만 3축 (자원봉사 300/500h + 정주 5년 300 + 금교 3단계 600)
   정주 10년 = 1억 원칙 · 추가 시민세금 0원 · 30년 흑자 +25.5조
@@ -727,7 +727,7 @@ function renderStats(){
     ${state.hasSeed ? `<div class="stat-row token"><span class="stat-label">🪙 시드 토큰 (${state.seedStage}/3)</span><span class="stat-value">${formatMoney(state.seedTokens)}</span></div>` : ''}
     <div class="stat-row" style="background:linear-gradient(135deg,#FEF3C7,#FDE68A);color:#78350F"><span style="font-weight:700;font-size:12px">📜 v16.1 포용 3축</span><span class="stat-value" style="color:#78350F;font-size:13px">${formatMoney(inclusiveAmount)}/1,200</span></div>
     <div class="stat-row" style="padding-left:20px;font-size:11px"><span class="stat-label" style="font-size:11px">🤝 봉사 ${volHours}/500h${state.volunteerHoursFromDuty>0?` <span style="color:#2563EB">(의무 +${state.volunteerHoursFromDuty}h)</span>`:''}</span><span style="color:${volDone?'#10B981':'#9CA3AF'};font-size:11px">${volDone?'✓ 300만':`${volPct}%`}</span></div>
-    <div class="stat-row" style="padding-left:20px;font-size:11px"><span class="stat-label" style="font-size:11px">🏠 정주 5년 체크</span><span style="color:${res5Done?'#10B981':'#9CA3AF'};font-size:11px">${res5Done?'✓ 300만':(state.year>=6?'대기중':`Y5 진입 시`)}</span></div>
+    <div class="stat-row" style="padding-left:20px;font-size:11px"><span class="stat-label" style="font-size:11px">🏠 정주 5년 체크</span><span style="color:${res5Done?'#10B981':'#9CA3AF'};font-size:11px">${res5Done?'✓ 300만':(state.year>=6?'곧 지급':`Y6 진입 시`)}</span></div>
     <div class="stat-row" style="padding-left:20px;font-size:11px"><span class="stat-label" style="font-size:11px">📚 금교 ${eduN}/3단계</span><span style="color:${eduN>0?'#10B981':'#9CA3AF'};font-size:11px">${formatMoney(eduN*200)}</span></div>
     ${state.bonusTokens > 0 ? `<div class="stat-row token"><span class="stat-label">⭐ 보너스 토큰</span><span class="stat-value">${formatMoney(state.bonusTokens)}</span></div>` : ''}
     ${state.loansTotal > 0 ? `<div class="stat-row loan"><span class="stat-label">💳 대출 잔액 (별도)</span><span class="stat-value" style="color:#1D4ED8">${formatMoney(state.loansTotal)}</span></div>` : ''}
@@ -984,10 +984,13 @@ function adBoostHint(){
 }
 
 // ===== ★ v16.1: 정주 5년 인센티브 (Y5 차년도 중간 체크포인트) =====
-// 10년 정주 = 1억 원칙 유지. Y5까지 이탈 없으면 Y6 진입 시 300만 즉시 지급
+// 10년 정주 = 1억 원칙 유지. Y5까지 이탈 없으면 Y6+ 진입 시 300만 즉시 지급
+// ★ 버그 수정: year !== 6 단일 시점 검사 → year >= 6 누적 검사
+//   이유: 군 복무·AD 이벤트가 Y6에 겹치면 정주5년 체크가 영영 누락되던 문제
 function checkResidency5Event(){
   if(state.residency5Received) return false;
-  if(state.year !== 6) return false; // Y6 진입(= 5년 정주 완료 다음 해)에만
+  if(state.year < 6) return false;       // Y6 이상에 도달했고
+  if(state.inMilitary) return false;     // 군 복무 중에는 일시 보류 (전역 후 자동 발화)
   showResidency5Event();
   return true;
 }
@@ -1249,6 +1252,12 @@ function militaryNextYear(){
 
 function showMonthlyStep(){
   scrollToTop();
+  // ★ 버그 수정: 정주5년 인센티브가 다른 이벤트로 누락되었을 경우 catch-up 발화
+  // 사회복무·AD 보호·군 전역 등 다른 흐름에서 진입할 때도 보장
+  if(!state.residency5Received && state.year >= 6 && !state.inMilitary){
+    showResidency5Event();
+    return;
+  }
   const html = `
     <div class="divider"></div>
     <h3 style="font-family:'Black Han Sans';font-size:20px;margin-bottom:8px;color:#FF6B6B">💸 월 납입액 결정</h3>
